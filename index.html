@@ -420,6 +420,8 @@ var db=null,fbAuth=null;
 try{
   firebase.initializeApp(firebaseConfig);
   db=firebase.database();fbAuth=firebase.auth();
+  try{fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   fbAuth.onAuthStateChanged(function(u){if(!u)fbAuth.signInAnonymously().catch(function(){})});
 }catch(e){}
 $("fSend").onclick=function(){
