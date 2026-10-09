@@ -166,10 +166,9 @@ body.dark .tip{background:#1d2b3a}body.dark p.d{color:#aaa}
       <div id="dList"></div>
     </div>
     <div class="card"><b>☁️ Sinkron cloud</b>
-      <p class="d" style="margin:6px 0 8px">Masuk dengan email agar data bisa dicadangkan ke cloud dan dipulihkan di HP lain.</p>
-      <div class="row" style="margin:0 0 8px"><input id="clMail" type="email" placeholder="Email" aria-label="Email"><input id="clPass" type="password" placeholder="Sandi (min. 6)" aria-label="Sandi"></div>
-      <div class="row" style="margin:0 0 8px"><button id="clIn">Masuk</button><button class="ghost" id="clUp">Daftar</button><button class="ghost" id="clOut">Keluar</button></div>
-      <div class="row" style="margin:0"><button class="ghost" id="clPush">Unggah ke cloud</button><button class="ghost" id="clPull">Ambil dari cloud</button></div>
+      <p class="d" style="margin:6px 0 8px">Masuk dengan Google sekali saja. Data tersinkron otomatis di semua perangkat (Android, iPhone, laptop) tanpa mengetik email dan sandi.</p>
+      <button class="full" id="clG">Lanjutkan dengan Google</button>
+      <div class="row" style="margin:8px 0 0"><button class="ghost" id="clNow">Sinkron sekarang</button><button class="ghost" id="clOut">Keluar</button></div>
       <div class="msg" id="clSt"></div>
     </div>
     <div class="card"><b>Jenis pemasukan</b>
@@ -224,7 +223,7 @@ var KAT_IN=["Gaji","Usaha","Bonus","Lainnya"];
 var KEY="mrmoney-v1";
 var S={tx:[],budget:{},target:0,name:"",country:"ID"};
 try{var raw=JSON.parse(localStorage.getItem(KEY)||"null");if(raw&&raw.tx)S=Object.assign(S,raw)}catch(e){}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+var ct,cOK=0;function save(k){if(!k)S.ts=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(!k&&cOK){clearTimeout(ct);ct=setTimeout(function(){clPush()},3000)}}
 var editId=0;
 function katIn(){return Array.isArray(S.catIn)&&S.catIn.length?S.catIn:KAT_IN}
 function katOut(){return Array.isArray(S.catOut)&&S.catOut.length?S.catOut:KAT_OUT}
@@ -491,7 +490,7 @@ function lockUp(){if(S.pin){$("lock").style.display="flex";$("lkIn").value="";$(
 $("lkIn").oninput=function(){if(this.value.length<4)return;if(hp(this.value)===S.pin)$("lock").style.display="none";else $("lkMsg").textContent="PIN salah.";this.value=""};
 $("pinSet").onclick=function(){var v=$("pinNew").value,m=$("pinMsg");if(!/^\d{4}$/.test(v)){m.className="msg out";m.textContent="PIN harus 4 angka.";return}S.pin=hp(v);save();$("pinNew").value="";m.className="msg in";m.textContent="PIN aktif."};
 $("pinOff").onclick=function(){delete S.pin;save();$("pinMsg").className="msg in";$("pinMsg").textContent="PIN dimatikan."};
-document.addEventListener("visibilitychange",function(){if(document.hidden)lockUp()});
+document.addEventListener("visibilitychange",function(){if(document.hidden)lockUp();else clSync()});
 var dp=null;
 window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();dp=e;$("inst").style.display="block"});
 $("inst").onclick=function(){if(dp){dp.prompt();dp=null;$("inst").style.display="none"}};
@@ -511,7 +510,7 @@ $("svList").onclick=function(e){var t=e.target,id=t.getAttribute("data-id"),a=t.
     p.log.push({id:Date.now(),tgl:today(),jumlah:a==="in"?v:-v});if(confirm(a==="in"?"Catat juga sebagai pengeluaran (mengurangi sisa uang)?":"Catat juga sebagai pemasukan?"))S.tx.push({id:Date.now()+1,jenis:a==="in"?"out":"in",jumlah:v,kat:a==="in"?"Tabungan":"Lainnya",tgl:today(),cat:(a==="in"?"Setor: ":"Tarik: ")+p.name})}
   else if(x){p.log=p.log.filter(function(l){return String(l.id)!==x})}else return;
   save();svL()};
-if(!S.firstUse){S.firstUse=Date.now();save()}
+if(!S.firstUse){S.firstUse=Date.now();save(1)}
 function addR(){recL();qkL()}
 function dL(){var l=S.debt||[],t={hutang:0,piutang:0};l.forEach(function(d){if(!d.done)t[d.tipe]+=d.jumlah});
   $("dList").innerHTML=(l.length?'<div class="cat"><span>Total hutang saya</span><b class="out">'+rp(t.hutang)+'</b></div><div class="cat"><span>Total piutang saya</span><b class="in">'+rp(t.piutang)+'</b></div>':'<p class="d" style="margin:0">Belum ada catatan.</p>')+l.map(function(d){return'<div class="cat" style="margin-top:6px;'+(d.done?"opacity:.5":"")+'"><span>'+(d.tipe==="hutang"?"Hutang":"Piutang")+': '+esc(d.who)+' · '+rp(d.jumlah)+'</span><span><a data-dd="'+d.id+'" style="cursor:pointer;font-weight:800">'+(d.done?"Buka":"Lunas")+'</a> <a data-dx="'+d.id+'" style="cursor:pointer;color:var(--out);font-weight:800">✕</a></span></div>'}).join("")}
@@ -528,16 +527,17 @@ document.addEventListener("click",function(e){if(e.target.id==="bakNow")$("exp")
 function yr(){var y=cur.slice(0,4),tin=0,tout=0,k={};S.tx.forEach(function(x){if(x.tgl.slice(0,4)!==y)return;if(x.jenis==="in")tin+=x.jumlah;else{tout+=x.jumlah;k[x.kat]=(k[x.kat]||0)+x.jumlah}});
   $("yT").textContent="Ringkasan tahun "+y;var ks=Object.keys(k).sort(function(a,b){return k[b]-k[a]}),C=["#0095F6","#ED4956","#3F9142","#F58529","#8134AF","#DD2A7B","#515BD4","#e0b000","#00a6a6","#8e8e8e"],ac=0,sg=ks.map(function(n,i){var p=k[n]/tout*100,z=C[i%10]+" "+ac+"% "+(ac+p)+"%";ac+=p;return z});
   $("yBox").innerHTML='<div class="cat"><span>Pemasukan</span><b class="in">'+rp(tin)+'</b></div><div class="cat"><span>Pengeluaran</span><b class="out">'+rp(tout)+'</b></div><div class="cat"><span>Sisa</span><b>'+rp(tin-tout)+'</b></div>'+(tout?'<div style="display:flex;gap:14px;align-items:center;margin-top:12px"><div style="flex:0 0 110px;height:110px;border-radius:50%;background:conic-gradient('+sg.join(",")+')"></div><div style="font-size:12px;flex:1">'+ks.map(function(n,i){return'<div><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+C[i%10]+'"></i> '+esc(n)+' '+Math.round(k[n]/tout*100)+'%</div>'}).join("")+'</div></div>':"")}
-function cl(){var u=fbAuth&&fbAuth.currentUser;if($("clSt").className.indexOf("out")<0)$("clSt").textContent=u&&!u.isAnonymous?"Masuk: "+u.email:"Belum masuk."}
 function clM(t,ok){$("clSt").className="msg "+(ok?"in":"out");$("clSt").textContent=t}
-if(fbAuth)fbAuth.onAuthStateChanged(function(){if($("clSt").className.indexOf("out")<0)cl()});
-function clA(fn){var e=$("clMail").value.trim(),p=$("clPass").value;if(!fbAuth)return clM("Layanan belum siap.");if(!e||p.length<6)return clM("Isi email dan sandi (min. 6 karakter).");fn(e,p).then(function(){$("clPass").value="";clM("Berhasil masuk: "+e,1)}).catch(function(er){clM("Gagal: "+(er.code||"coba lagi"))})}
-$("clIn").onclick=function(){clA(function(e,p){return fbAuth.signInWithEmailAndPassword(e,p)})};
-$("clUp").onclick=function(){clA(function(e,p){return fbAuth.createUserWithEmailAndPassword(e,p)})};
-$("clOut").onclick=function(){if(!fbAuth)return;fbAuth.signOut().then(function(){clM("Sudah keluar.",1);return fbAuth.signInAnonymously()}).catch(function(){})};
+function cl(){var u=fbAuth&&fbAuth.currentUser;if($("clSt").textContent.indexOf("Gagal")<0)clM(u&&!u.isAnonymous?"Masuk: "+(u.email||u.displayName):"Belum masuk.",u&&!u.isAnonymous)}
 function clR(){var u=fbAuth&&fbAuth.currentUser;return db&&u&&!u.isAnonymous?db.ref("mrmoney/"+u.uid):null}
-$("clPush").onclick=function(){var r=clR();if(!r)return clM("Masuk dulu.");var c=Object.assign({},S);delete c.pin;r.set({data:JSON.stringify(c),ts:firebase.database.ServerValue.TIMESTAMP}).then(function(){clM("Data terunggah ke cloud.",1)}).catch(function(){clM("Gagal mengunggah. Cek aturan database.")})};
-$("clPull").onclick=function(){var r=clR();if(!r)return clM("Masuk dulu.");r.once("value").then(function(sn){var v=sn.val();if(!v||!v.data)return clM("Belum ada data di cloud.");if(!confirm("Data di HP ini akan diganti dengan data cloud. Lanjut?"))return;var d=JSON.parse(v.data);if(!d||!Array.isArray(d.tx))throw 0;if(S.pin)d.pin=S.pin;S=Object.assign({tx:[],budget:{},target:0,name:"",country:"ID"},d);save();location.reload()}).catch(function(){clM("Gagal mengambil data.")})};
+function clPush(){var r=clR();if(!r||!cOK)return;var c=Object.assign({},S);delete c.pin;r.set({data:JSON.stringify(c),ts:S.ts||Date.now()}).then(function(){clM("Tersinkron "+new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"}),1)}).catch(function(){clM("Gagal sinkron. Cek aturan database.")})}
+function clSync(){var r=clR();if(!r)return;r.once("value").then(function(sn){var v=sn.val(),lt=S.ts||0;
+  if(v&&v.data&&(v.ts>lt||!S.tx.length)){var d=JSON.parse(v.data);if(d&&Array.isArray(d.tx)){if(S.pin)d.pin=S.pin;S=Object.assign({tx:[],budget:{},target:0,name:"",country:"ID"},d);S.ts=v.ts;save(1);cOK=1;render(document.querySelector(".view.on").id.slice(2));dk();clM("Data cloud dimuat.",1);return}}
+  cOK=1;if(!v||lt>(v.ts||0))clPush();else cl()}).catch(function(){clM("Gagal terhubung ke cloud.")})}
+if(fbAuth)fbAuth.onAuthStateChanged(function(u){cl();if(u&&!u.isAnonymous)clSync()});
+$("clG").onclick=function(){if(!fbAuth)return clM("Layanan belum siap.");fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function(er){clM("Gagal masuk: "+(er.code||"coba lagi"))})};
+$("clNow").onclick=function(){if(!clR())return clM("Masuk dulu.");clSync()};
+$("clOut").onclick=function(){if(!fbAuth)return;cOK=0;fbAuth.signOut().then(function(){clM("Sudah keluar.",1);return fbAuth.signInAnonymously()}).catch(function(){})};
 lockUp();recRun();
 render("home");
 </script>
