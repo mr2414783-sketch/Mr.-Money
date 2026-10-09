@@ -98,7 +98,7 @@ body.dark .tip{background:#1d2b3a}body.dark p.d{color:#aaa}
       <div id="hWarn"></div>
     </div>
     <div class="card"><b>Catatan terbaru</b><ul id="hList"></ul></div>
-    <button class="full" id="inst" style="display:none;margin-bottom:10px">📲 Pasang di layar utama</button>
+    <button id="inst" style="display:none;position:fixed;left:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:25;width:auto;padding:7px 12px;font-size:12px;border-radius:100px;box-shadow:0 2px 8px rgba(0,0,0,.2)" aria-label="Pasang di layar utama">📲 Pasang</button>
     <button class="ghost full" id="toFb">📝 Kirim Masukan (bug atau saran)</button>
     <a id="backLink" style="display:none;text-align:center;margin-top:14px;font-size:13px;font-weight:700;color:var(--blue-d)">← Kembali ke Daily English</a>
   </section>
