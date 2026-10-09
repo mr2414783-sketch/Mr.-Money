@@ -420,7 +420,7 @@ var db=null,fbAuth=null;
 try{
   firebase.initializeApp(firebaseConfig);
   db=firebase.database();fbAuth=firebase.auth();
-  fbAuth.signInAnonymously().catch(function(){});
+  fbAuth.onAuthStateChanged(function(u){if(!u)fbAuth.signInAnonymously().catch(function(){})});
 }catch(e){}
 $("fSend").onclick=function(){
   var msg=$("fMsg").value.trim(),st=$("fStat");
