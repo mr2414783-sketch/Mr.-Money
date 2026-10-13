@@ -176,8 +176,8 @@ body.dark .tip{background:#1d2b3a}body.dark p.d{color:#aaa}
       <div id="iList"></div>
     </div>
     <div class="card"><b>🔒 Kunci PIN</b>
-      <p class="d" style="margin:6px 0 8px">PIN 4 angka untuk mengunci tampilan aplikasi. Bukan enkripsi data.</p>
-      <div class="row" style="margin:0"><input id="pinNew" type="password" inputmode="numeric" maxlength="4" placeholder="PIN baru" aria-label="PIN baru"><button id="pinSet" style="flex:0 0 auto">Atur</button><button class="ghost" id="pinOff" style="flex:0 0 auto">Matikan</button></div>
+      <p class="d" style="margin:6px 0 8px">PIN 6 angka untuk mengunci tampilan aplikasi. Bukan enkripsi data.</p>
+      <div class="row" style="margin:0"><input id="pinNew" type="password" inputmode="numeric" maxlength="6" placeholder="PIN baru" aria-label="PIN baru"><button id="pinSet" style="flex:0 0 auto">Atur</button><button class="ghost" id="pinOff" style="flex:0 0 auto">Matikan</button></div>
       <div class="msg" id="pinMsg"></div>
     </div>
   </section>
@@ -202,7 +202,7 @@ body.dark .tip{background:#1d2b3a}body.dark p.d{color:#aaa}
   <button data-go="budget"><span>🎯</span>Anggaran</button>
 </nav>
 
-<div id="lock" style="display:none;position:fixed;inset:0;z-index:99;background:var(--panel);flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px"><b style="font-size:20px">🔒 Mr. Money</b><input id="lkIn" type="password" inputmode="numeric" maxlength="4" placeholder="Masukkan PIN" style="max-width:220px;text-align:center"><div class="msg out" id="lkMsg"></div></div>
+<div id="lock" style="display:none;position:fixed;inset:0;z-index:99;background:var(--panel);flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px"><b style="font-size:20px">🔒 Mr. Money</b><input id="lkIn" type="password" inputmode="numeric" maxlength="6" placeholder="Masukkan PIN" style="max-width:220px;text-align:center"><div class="msg out" id="lkMsg"></div></div>
 <script>
 /* ===== Pengaturan ===== */
 // Isi dengan alamat Daily English kamu supaya muncul tombol "Kembali". Kosongkan jika tidak perlu.
@@ -489,9 +489,9 @@ function dk(){document.body.classList.toggle("dark",!!S.dark);$("dk").textConten
 $("dk").onclick=function(){S.dark=!S.dark;save();dk()};dk();
 var hp=function(p){var h=5381;for(var i=0;i<p.length;i++)h=(h*33+p.charCodeAt(i))|0;return String(h)};
 function lockUp(){if(S.pin){$("lock").style.display="flex";$("lkIn").value="";$("lkMsg").textContent=""}}
-$("lkIn").oninput=function(){if(this.value.length<4)return;if(hp(this.value)===S.pin)$("lock").style.display="none";else $("lkMsg").textContent="PIN salah.";this.value=""};
-$("pinSet").onclick=function(){var v=$("pinNew").value,m=$("pinMsg");if(!/^\d{4}$/.test(v)){m.className="msg out";m.textContent="PIN harus 4 angka.";return}S.pin=hp(v);save();$("pinNew").value="";m.className="msg in";m.textContent="PIN aktif."};
-$("pinOff").onclick=function(){delete S.pin;save();$("pinMsg").className="msg in";$("pinMsg").textContent="PIN dimatikan."};
+$("lkIn").oninput=function(){if(this.value.length<(S.pinLen||4))return;if(hp(this.value)===S.pin)$("lock").style.display="none";else $("lkMsg").textContent="PIN salah.";this.value=""};
+$("pinSet").onclick=function(){var v=$("pinNew").value,m=$("pinMsg");if(!/^\d{6}$/.test(v)){m.className="msg out";m.textContent="PIN harus 6 angka.";return}S.pin=hp(v);S.pinLen=6;save();$("pinNew").value="";m.className="msg in";m.textContent="PIN aktif."};
+$("pinOff").onclick=function(){delete S.pin;delete S.pinLen;save();$("pinMsg").className="msg in";$("pinMsg").textContent="PIN dimatikan."};
 document.addEventListener("visibilitychange",function(){if(document.hidden)lockUp();else clSync()});
 var dp=null;
 window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();dp=e;$("inst").style.display="block"});
@@ -532,9 +532,9 @@ function yr(){var y=cur.slice(0,4),tin=0,tout=0,k={};S.tx.forEach(function(x){if
 function clM(t,ok){$("clSt").className="msg "+(ok?"in":"out");$("clSt").textContent=t}
 function cl(){var u=fbAuth&&fbAuth.currentUser;if($("clSt").textContent.indexOf("Gagal")<0)clM(u&&!u.isAnonymous?"Masuk: "+(u.email||u.displayName):"Belum masuk.",u&&!u.isAnonymous)}
 function clR(){var u=fbAuth&&fbAuth.currentUser;return db&&u&&!u.isAnonymous?db.ref("mrmoney/"+u.uid):null}
-function clPush(){var r=clR();if(!r||!cOK)return;var c=Object.assign({},S);delete c.pin;r.set({data:JSON.stringify(c),ts:S.ts||Date.now()}).then(function(){clM("Tersinkron "+new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"}),1)}).catch(function(){clM("Gagal sinkron. Cek aturan database.")})}
+function clPush(){var r=clR();if(!r||!cOK)return;var c=Object.assign({},S);delete c.pin;delete c.pinLen;r.set({data:JSON.stringify(c),ts:S.ts||Date.now()}).then(function(){clM("Tersinkron "+new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"}),1)}).catch(function(){clM("Gagal sinkron. Cek aturan database.")})}
 function clSync(){var r=clR();if(!r)return;r.once("value").then(function(sn){var v=sn.val(),lt=S.ts||0;
-  if(v&&v.data&&(v.ts>lt||!S.tx.length)){var d=JSON.parse(v.data);if(d&&Array.isArray(d.tx)){if(S.pin)d.pin=S.pin;S=Object.assign({tx:[],budget:{},target:0,name:"",country:"ID"},d);S.ts=v.ts;save(1);cOK=1;render(document.querySelector(".view.on").id.slice(2));dk();clM("Data cloud dimuat.",1);return}}
+  if(v&&v.data&&(v.ts>lt||!S.tx.length)){var d=JSON.parse(v.data);if(d&&Array.isArray(d.tx)){if(S.pin){d.pin=S.pin;d.pinLen=S.pinLen}S=Object.assign({tx:[],budget:{},target:0,name:"",country:"ID"},d);S.ts=v.ts;save(1);cOK=1;render(document.querySelector(".view.on").id.slice(2));dk();clM("Data cloud dimuat.",1);return}}
   cOK=1;if(!v||lt>(v.ts||0))clPush();else cl()}).catch(function(){clM("Gagal terhubung ke cloud.")})}
 if(fbAuth)fbAuth.onAuthStateChanged(function(u){cl();if(u&&!u.isAnonymous)clSync()});
 $("clG").onclick=function(){if(!fbAuth)return clM("Layanan belum siap.");fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function(er){clM("Gagal masuk: "+(er.code||"coba lagi"))})};
