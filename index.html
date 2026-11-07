@@ -147,6 +147,7 @@ body.dark .tip{background:#1d2b3a}body.dark p.d{color:#aaa}
       <div class="row" style="margin:8px 0 0"><input id="bNew" maxlength="30" placeholder="Nama jenis, mis. Pulsa, Kos, Hobi" aria-label="Nama jenis anggaran"><button id="bAdd" style="flex:0 0 auto">Tambah</button></div>
       <div class="msg out" id="bMsg"></div>
     </div>
+    <div class="card" id="bSum"></div>
     <div class="card" id="bList"></div>
     <div class="card">
       <b>🎯 Target tabungan bulanan</b>
@@ -325,7 +326,7 @@ function render(v){
     $("bList").innerHTML=katOut().filter(function(k){return k!=="Tabungan"}).map(function(k,i){
       return '<div class="brow"><label for="b'+i+'"><span>'+esc(k)+'</span><span id="bt'+i+'"></span></label><div class="row" style="margin-bottom:0"><input id="b'+i+'" class="money" data-k="'+esc(k)+'" type="text" inputmode="'+(cc()[4]?"decimal":"numeric")+'" autocomplete="off" placeholder="Batas ('+cc()[2].trim()+')" value="'+(S.budget[k]?fmtNum(S.budget[k]):"")+'"><button class="ghost" data-rm="'+esc(k)+'" style="flex:0 0 auto" aria-label="Hapus anggaran '+esc(k)+'">Hapus</button></div><div id="bb'+i+'"></div></div>';
     }).join("");
-    document.querySelectorAll("#bList input").forEach(function(inp){bud(inp)});
+    document.querySelectorAll("#bList input").forEach(function(inp){bud(inp)});bSum();
     $("tTarget").value=S.target?fmtNum(S.target):"";tgt();iL();svL();dL();cl();
   }
   if(v==="fb"){$("fName").value=S.name||"";$("fStat").textContent=""}
@@ -335,6 +336,18 @@ function bud(inp){
   $("bt"+i).textContent=lim?rp(used)+" / "+rp(lim):(used?rp(used)+" terpakai":"");
   var p=lim?used/lim*100:0;
   $("bb"+i).innerHTML=lim?'<div class="bar"><i class="'+barCls(p)+'" style="width:'+Math.min(p,100)+'%"></i></div>':"";
+}
+function bSum(){
+  var r=stat(cur),al=0;
+  document.querySelectorAll("#bList input").forEach(function(i){al+=parseAmt(i.value)});
+  var sisa=r.tin-al,p=r.tin?al/r.tin*100:(al?100:0),real=r.tin-r.tout;
+  $("bSum").innerHTML='<b>💰 Dana bulan ini ('+lbl(cur)+')</b>'+
+  '<div class="cat" style="margin-top:8px"><span>Total pemasukan</span><span class="in">'+rp(r.tin)+'</span></div>'+
+  '<div class="cat" style="margin-top:6px"><span>Dibagi ke anggaran</span><span class="out">− '+rp(al)+'</span></div>'+
+  '<div class="bar"><i class="'+barCls(p)+'" style="width:'+Math.min(p,100)+'%"></i></div>'+
+  '<div class="cat"><span>Sisa belum dibagi</span><span class="'+(sisa<0?"out":"in")+'">'+rp(sisa)+'</span></div>'+
+  (sisa<0?'<p class="d" style="margin:6px 0 0;color:var(--out)">⚠️ Pembagian anggaran melebihi total pemasukan.</p>':'')+
+  '<p class="d" style="margin:8px 0 0">Sisa uang setelah pengeluaran yang sudah dicatat: <b class="'+(real<0?"out":"in")+'">'+rp(real)+'</b></p>';
 }
 function tgt(){
   var t=+S.target||0,u=stat(cur).kat["Tabungan"]||0;
@@ -396,8 +409,9 @@ $("bList").addEventListener("click",function(e){
 $("bList").addEventListener("change",function(e){
   var inp=e.target;if(!inp.getAttribute("data-k"))return;
   var v=parseAmt(inp.value);if(v>0)S.budget[inp.getAttribute("data-k")]=v;else delete S.budget[inp.getAttribute("data-k")];
-  save();bud(inp);
+  save();bud(inp);bSum();
 });
+$("bList").addEventListener("input",function(e){if(e.target.getAttribute("data-k"))bSum()});
 $("tTarget").onchange=function(){S.target=parseAmt($("tTarget").value);save();tgt()};
 
 $("exp").onclick=function(){
