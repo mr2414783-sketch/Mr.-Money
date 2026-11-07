@@ -147,7 +147,10 @@ body.dark .tip{background:#1d2b3a}body.dark p.d{color:#aaa}
       <div class="row" style="margin:8px 0 0"><input id="bNew" maxlength="30" placeholder="Nama jenis, mis. Pulsa, Kos, Hobi" aria-label="Nama jenis anggaran"><button id="bAdd" style="flex:0 0 auto">Tambah</button></div>
       <div class="msg out" id="bMsg"></div>
     </div>
-    <div class="card" id="bSum"></div>
+    <div class="card"><div id="bSum"></div>
+      <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><b>📅 Pengeluaran per hari</b>
+        <div class="row" style="margin:8px 0 0"><input id="bDays" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Untuk berapa hari?" aria-label="Jumlah hari"><button class="ghost" id="bDaysM" style="flex:0 0 auto">Sisa hari bulan ini</button></div>
+        <div id="bDay"></div></div></div>
     <div class="card" id="bList"></div>
     <div class="card">
       <b>🎯 Target tabungan bulanan</b>
@@ -326,7 +329,7 @@ function render(v){
     $("bList").innerHTML=katOut().filter(function(k){return k!=="Tabungan"}).map(function(k,i){
       return '<div class="brow"><label for="b'+i+'"><span>'+esc(k)+'</span><span id="bt'+i+'"></span></label><div class="row" style="margin-bottom:0"><input id="b'+i+'" class="money" data-k="'+esc(k)+'" type="text" inputmode="'+(cc()[4]?"decimal":"numeric")+'" autocomplete="off" placeholder="Batas ('+cc()[2].trim()+')" value="'+(S.budget[k]?fmtNum(S.budget[k]):"")+'"><button class="ghost" data-rm="'+esc(k)+'" style="flex:0 0 auto" aria-label="Hapus anggaran '+esc(k)+'">Hapus</button></div><div id="bb'+i+'"></div></div>';
     }).join("");
-    document.querySelectorAll("#bList input").forEach(function(inp){bud(inp)});bSum();
+    document.querySelectorAll("#bList input").forEach(function(inp){bud(inp)});$("bDays").value=S.hari||"";bSum();
     $("tTarget").value=S.target?fmtNum(S.target):"";tgt();iL();svL();dL();cl();
   }
   if(v==="fb"){$("fName").value=S.name||"";$("fStat").textContent=""}
@@ -348,6 +351,15 @@ function bSum(){
   '<div class="cat"><span>Sisa belum dibagi</span><span class="'+(sisa<0?"out":"in")+'">'+rp(sisa)+'</span></div>'+
   (sisa<0?'<p class="d" style="margin:6px 0 0;color:var(--out)">⚠️ Pembagian anggaran melebihi total pemasukan.</p>':'')+
   '<p class="d" style="margin:8px 0 0">Sisa uang setelah pengeluaran yang sudah dicatat: <b class="'+(real<0?"out":"in")+'">'+rp(real)+'</b></p>';
+  bDay(al,real);
+}
+function bDay(al,real){
+  var d=S.hari|0,el=$("bDay");
+  if(d<1){el.innerHTML='<p class="d" style="margin:8px 0 0">Isi jumlah hari, nanti muncul batas pengeluaran per hari.</p>';return}
+  var h='<div class="cat" style="margin-top:10px"><span>Dari sisa uang ('+d+' hari)</span><span class="'+(real<0?"out":"in")+'">'+rp(real/d)+' / hari</span></div>'+
+  '<div class="cat" style="margin-top:6px"><span>Dari total anggaran</span><span>'+rp(al/d)+' / hari</span></div>';
+  var rows=[];document.querySelectorAll("#bList input").forEach(function(i){var l=parseAmt(i.value);if(l)rows.push('<div class="cat" style="font-weight:600;font-size:13px;margin-top:4px"><span>'+esc(i.getAttribute("data-k"))+'</span><span>'+rp(l/d)+' / hari</span></div>')});
+  el.innerHTML=h+(rows.length?'<div style="margin-top:8px">'+rows.join("")+'</div>':"");
 }
 function tgt(){
   var t=+S.target||0,u=stat(cur).kat["Tabungan"]||0;
@@ -412,6 +424,8 @@ $("bList").addEventListener("change",function(e){
   save();bud(inp);bSum();
 });
 $("bList").addEventListener("input",function(e){if(e.target.getAttribute("data-k"))bSum()});
+$("bDays").oninput=function(){this.value=this.value.replace(/\D/g,"");S.hari=parseInt(this.value)||0;save();bSum()};
+$("bDaysM").onclick=function(){var n=new Date(),last=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();S.hari=last-n.getDate()+1;$("bDays").value=S.hari;save();bSum()};
 $("tTarget").onchange=function(){S.target=parseAmt($("tTarget").value);save();tgt()};
 
 $("exp").onclick=function(){
